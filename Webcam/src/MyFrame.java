@@ -1,15 +1,11 @@
 //test
-import java.awt.BorderLayout;
-import java.awt.EventQueue;
-import java.awt.Graphics;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
+import java.awt.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.awt.image.*;
 import java.util.ArrayList;
 
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.border.Border;
+import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 import org.opencv.core.Core;
@@ -22,16 +18,20 @@ import org.opencv.core.Scalar;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
-public class MyFrame extends JFrame 
+public class MyFrame extends JFrame implements KeyListener
 {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
-	private int state = 1;
+	private int state = 0;
 	/**
 	 * states:
-	 * 0 = normal
-	 * 1 = binary 
-	 * 2 = edges
-	 * 3 = hsv
+	 * 0 = normal (a)
+	 * 1 = binary (s)
+	 * 2 = edges  (d)
+	 * 3 = hsv    (f)
 	 */
 	/**
 	 * Launch the application.
@@ -59,15 +59,22 @@ public class MyFrame extends JFrame
 	 */
 	public MyFrame() 
 	{
+		super("Object Detection");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 650, 490);
+		this.setFocusable(true);
 		contentPane = new JPanel();
-		//contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-		contentPane.setBorder((Border) new BorderLayout());
-		setContentPane(contentPane);
+		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		contentPane.setLayout(new FlowLayout());
+		contentPane.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
+		JPanel j = new JPanel();
 		JButton b1 = new JButton("Test");
-		contentPane.add(b1);
-		contentPane.setLayout(null);
+		b1.setVisible(true);
+		contentPane.add(j);
+		j.add(b1);
+		setContentPane(contentPane);
+		addKeyListener(this);
+		//contentPane.setLayout(null);
 		
 		
 		
@@ -81,6 +88,7 @@ public class MyFrame extends JFrame
 	{
 		if (state == 0)
 		{
+			this.setTitle("Object Detection: Normal");
 			g = contentPane.getGraphics();
 			BufferedImage src = videoCap.getOneFrame();
 			byte[] data = ((DataBufferByte) src.getRaster().getDataBuffer()).getData();
@@ -113,6 +121,7 @@ public class MyFrame extends JFrame
 		}
 		else if (state == 1)
 		{
+			this.setTitle("Object Detection: Binary");
 			g = contentPane.getGraphics();
 			BufferedImage src = videoCap.getOneFrame();
 			byte[] data = ((DataBufferByte) src.getRaster().getDataBuffer()).getData();
@@ -142,6 +151,7 @@ public class MyFrame extends JFrame
 				}
 			}
 			g.drawImage(binMatToImage(display), 0, 0, this);
+			
 		}
 		//edit here
 	}
@@ -189,6 +199,39 @@ public class MyFrame extends JFrame
 		Imgproc.Canny(image, r, lower, upper, 3, false);
 		return r;
 	}
+
+
+		@Override
+		public void keyPressed(KeyEvent e) 
+		{
+			int k = e.getKeyCode();
+			 if (k == KeyEvent.VK_RIGHT) 
+			 {
+				 
+				 if (state < 4)
+			        state++;
+			 }
+			 else if (k == KeyEvent.VK_LEFT){
+				 if (state > 0)
+				 state--;
+			 }
+		}
+
+		@Override
+		public void keyReleased(KeyEvent e) {
+			// TODO Auto-generated method stub
+		}
+
+		@Override
+		public void keyTyped(KeyEvent e) {
+			// TODO Auto-generated method stub
+
+		}
+		
+		
+	
+	
+	
 	class MyThread extends Thread{
 		@Override
 		public void run() 

@@ -67,8 +67,8 @@ public class MyFrame extends JFrame {
         byte[] data = ((DataBufferByte) src.getRaster().getDataBuffer()).getData();
         Mat mat = new Mat(src.getHeight(), src.getWidth(), CvType.CV_8UC3);
         mat.put(0, 0, data);
-        Imgcodecs.imwrite("C:/WebcamTest/test2.jpg", mat);
-        mat = Imgcodecs.imread("C:/WebcamTest/test2.jpg");
+        Imgcodecs.imwrite("./test2.jpg", mat);
+        mat = Imgcodecs.imread("./test2.jpg");
         Mat grayMat = new Mat(mat.height(),mat.width(), CvType.CV_8UC1);
 		Imgproc.cvtColor(mat, grayMat, Imgproc.COLOR_RGB2GRAY);
         Mat binMat = new Mat(mat.height(),mat.width(), CvType.CV_8UC1);

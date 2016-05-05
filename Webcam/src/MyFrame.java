@@ -26,6 +26,9 @@ public class MyFrame extends JFrame implements KeyListener
 	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
 	private int state = 0;
+	int[] topology = {300, 150, 75, 25, 1};
+	private Brain b = new Brain(topology, false);
+	
 	/**
 	 * states:
 	 * 0 = normal (a)

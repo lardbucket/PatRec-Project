@@ -3,6 +3,7 @@ import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.image.*;
+import java.io.File;
 import java.util.ArrayList;
 
 import javax.swing.*;
@@ -29,7 +30,7 @@ public class MyFrame extends JFrame implements KeyListener
 	private int state = 0;
 	int[] topology = {300, 150, 75, 25, 1};
 	private Brain b = new Brain(topology, false);
-	
+
 	/**
 	 * states:
 	 * 0 = normal (a)
@@ -71,15 +72,15 @@ public class MyFrame extends JFrame implements KeyListener
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		contentPane.setLayout(new FlowLayout());
 		contentPane.setComponentOrientation(ComponentOrientation.LEFT_TO_RIGHT);
-		JPanel j = new JPanel();
-		JButton b1 = new JButton("Test");
-		b1.setVisible(true);
-		contentPane.add(j);
-		j.add(b1);
+		//JPanel j = new JPanel();
+		//JButton b1 = new JButton("Test");
+		//b1.setVisible(true);
+		//contentPane.add(j);
+		//j.add(b1);
 		setContentPane(contentPane);
 		addKeyListener(this);
 		//contentPane.setLayout(null);
-		
+
 		new MyThread().start();
 	}
 
@@ -152,7 +153,7 @@ public class MyFrame extends JFrame implements KeyListener
 				}
 			}
 			g.drawImage(binMatToImage(display), 0, 0, this);
-			
+
 		}
 		//edit here
 	}
@@ -200,35 +201,77 @@ public class MyFrame extends JFrame implements KeyListener
 		Imgproc.Canny(image, r, lower, upper, 3, false);
 		return r;
 	}
-
-
-		@Override
-		public void keyPressed(KeyEvent e) 
+	public static void trainBrain(Brain b)
+	{
+		String obj_dir = CreateTrainingSet.OUT_OBJECTS_FOLDER;
+		String non_obj_dir = CreateTrainingSet.OUT_NON_OBJECTS_FOLDER;
+		File[] objects = new File(obj_dir).listFiles();
+		File[] nonObjects = new File(non_obj_dir).listFiles();
+		double[] object_target = {1};
+		double[] non_object_target = {0};
+		for (int i = 0; i < objects.length; i++)
 		{
-			int k = e.getKeyCode();
-			 if (k == KeyEvent.VK_RIGHT) 
-			 {
-				 
-				 if (state < 4)
-			        state++;
-			 }
-			 else if (k == KeyEvent.VK_LEFT){
-				 if (state > 0)
-				 state--;
-			 }
+			Mat m = Imgcodecs.imread(objects[i].getPath());
+			double[] inputs = createFeatureVector(m);
+			b.feedForward(inputs);
+			b.backPropagate(object_target);
+		}
+		for (int i = 0; i < nonObjects.length; i++)
+		{
+			Mat m = Imgcodecs.imread(nonObjects[i].getPath());
+			double[] inputs = createFeatureVector(m);
+			b.feedForward(inputs);
+			b.backPropagate(non_object_target);
 		}
 
-		@Override
-		public void keyReleased(KeyEvent e) {
-			// TODO Auto-generated method stub
-		}
+	}
 
-		@Override
-		public void keyTyped(KeyEvent e) {
-			// TODO Auto-generated method stub
 
+	public static double[] createFeatureVector(Mat m)
+	{
+		double[] r = new double[300];
+		int size = 0;
+		for (int i = 0; i < m.rows(); i++)
+		{
+			for (int j = 0; j < m.cols(); j++)
+			{
+				double[] temp = m.get(i, j);
+				r[size] = temp[0];
+				r[size + 1] = temp[1];
+				r[size + 2] = temp[2];
+				size += 3;
+			}
 		}
-	
+		return r;
+	}
+
+	@Override
+	public void keyPressed(KeyEvent e) 
+	{
+		int k = e.getKeyCode();
+		if (k == KeyEvent.VK_RIGHT) 
+		{
+
+			if (state < 4)
+				state++;
+		}
+		else if (k == KeyEvent.VK_LEFT){
+			if (state > 0)
+				state--;
+		}
+	}
+
+	@Override
+	public void keyReleased(KeyEvent e) {
+		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public void keyTyped(KeyEvent e) {
+		// TODO Auto-generated method stub
+
+	}
+
 	class MyThread extends Thread{
 		@Override
 		public void run() 

@@ -1,5 +1,8 @@
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -21,7 +24,7 @@ public class TestMain
 	public static final String OUTPUT_HSV_BIN = "C:/WebcamTest/dogHSVBIN.jpg";
 	public static final String OUTPUT_HSV_BIN_EDGE = "C:/WebcamTest/dogHSVBINedge.jpg";
 	public static final String OUTPUT_BIN_EDGE = "C:/WebcamTest/dogBINedge.jpg";
-	public static void main(String[] args)
+	public static void main(String[] args) throws FileNotFoundException
 	{
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		/** save images, color conversion
@@ -40,11 +43,11 @@ public class TestMain
 		Imgcodecs.imwrite(OUTPUT_HSV_BIN, binMatHSV);
 		saveEdges(m, OUTPUT_BIN_EDGE);
 		saveEdges(mHSV, OUTPUT_HSV_BIN_EDGE);
-		*/
+		 */
 		/**
 		Mat m = Imgcodecs.imread(SRC);
 		Mat HSVMat = getHSV(m);
-		
+
 		Mat smallMat = new Mat();
 		Imgproc.resize(HSVMat, smallMat, new Size(10, 10));
 		int[] topology = {300, 150, 100, 50, 1};
@@ -54,15 +57,73 @@ public class TestMain
 			System.out.println(i + ": " + fV[i]);
 		b.feedForward(fV);
 		double[] output = b.getOutput();
-		
+
 		for (int i = 0; i < output.length; i++)
 			System.out.println(output[i]);
-		*/
-		File f = new File("C:/WebcamTest/srcobjects/img0.jpg");
-		System.out.println((f.getPath()));
+		 */
+		int[] topology = {300, 300, 150, 100, 50, 25, 10, 5, 1};
+		Brain b = new Brain(topology, false);
+		trainBrain(b);
+		Mat test = Imgcodecs.imread("C:/WebcamTest/outobjects/0.jpg");
+		double[] input = createFeatureVector(test);
+		b.feedForward(input);
+		System.out.println(b.getOutput()[0]);
 		System.out.println("Done!");
 	}
-	
+	public static void trainBrain(Brain b) throws FileNotFoundException
+	{
+		String obj_dir = CreateTrainingSet.OUT_OBJECTS_FOLDER;
+		String non_obj_dir = CreateTrainingSet.OUT_NON_OBJECTS_FOLDER;
+		String backup_dir = "C:/WebcamTest/brain.sav";
+		File[] objects = new File(obj_dir).listFiles();
+		File[] nonObjects = new File(non_obj_dir).listFiles();
+		double[] object_target = {1};
+		double[] non_object_target = {-1};
+		double errorThreshold = 0.3;
+		int epoch = 1;
+		//double averageError = 0;
+		double prevError = 0;
+		do 
+		{
+			double currentError = 0;
+			for (int i = 0; i < objects.length; i++)
+			{
+				Mat m = Imgcodecs.imread(objects[i].getPath());
+				double[] inputs = createFeatureVector(m);
+				b.feedForward(inputs);
+				b.backPropagate(object_target);
+				currentError += b.overallError;
+			}
+			for (int i = 0; i < objects.length; i++)
+			{
+				Mat m = Imgcodecs.imread(nonObjects[i].getPath());
+				double[] inputs = createFeatureVector(m);
+				b.feedForward(inputs);
+				b.backPropagate(non_object_target);
+				currentError += b.overallError;
+			}
+			currentError /= (objects.length + objects.length);
+			System.out.println("Epoch " + epoch + ": " + currentError);
+			
+			
+			if (epoch == 1)
+			{
+				saveNetwork(b, backup_dir);
+			}
+			else if (currentError > prevError)
+			{
+				b = loadNetwork(backup_dir);
+			}
+			else
+			{
+				saveNetwork(b, backup_dir);
+			}
+			prevError = currentError;
+			epoch++;
+		}
+		while (prevError > errorThreshold);
+
+	}
 	public static double[] createFeatureVector(Mat m)
 	{
 		double[] r = new double[300];
@@ -80,7 +141,7 @@ public class TestMain
 		}
 		return r;
 	}
-	
+
 	public static void saveEdges(Mat m, String fileName)
 	{
 		Mat edge = new Mat();
@@ -101,33 +162,179 @@ public class TestMain
 		}
 		Imgcodecs.imwrite(fileName, display);
 	}
-	
+
 	public static Mat getHSV(Mat m)
 	{
 		Mat r = m.clone();
 		Imgproc.cvtColor(r, r, Imgproc.COLOR_RGB2HSV_FULL);
 		return r;
 	}
-	
-	 public static Mat autoCanny(Mat image)
-	 {
-		 MatOfDouble mu = new MatOfDouble();
-		 MatOfDouble stdev = new MatOfDouble();
-		 Core.meanStdDev(image, mu, stdev);
-		 double sigma = 0.33;
-		 //double sigma = stdev.get(0, 0)[0];
-		 double v = mu.get(0, 0)[0];
-		 double lower = (1.0 - sigma) * v;
-		 double upper = (1.0 + sigma) * v;
-		 Mat r = new Mat();
-		 if (lower < 0)
-			 lower = 0;
-		 if (upper > 255)
-			 upper = 255;
-		 Imgproc.Canny(image, r, lower, upper, 3, false);
-		 return r;
-	 }
-	 
 
-	
+	public static Mat autoCanny(Mat image)
+	{
+		MatOfDouble mu = new MatOfDouble();
+		MatOfDouble stdev = new MatOfDouble();
+		Core.meanStdDev(image, mu, stdev);
+		double sigma = 0.33;
+		//double sigma = stdev.get(0, 0)[0];
+		double v = mu.get(0, 0)[0];
+		double lower = (1.0 - sigma) * v;
+		double upper = (1.0 + sigma) * v;
+		Mat r = new Mat();
+		if (lower < 0)
+			lower = 0;
+		if (upper > 255)
+			upper = 255;
+		Imgproc.Canny(image, r, lower, upper, 3, false);
+		return r;
+	}
+	public static void saveNetwork(Brain b, String fileName) throws FileNotFoundException
+	{
+		File f = new File(fileName);
+		if (f.exists())
+			f.delete();
+		PrintWriter p = new PrintWriter(f);
+		String w = "";
+		if (b.isBiased())
+			w += "B\n";
+		else
+			w += "N\n";
+		w += b.overallError + "\n" + b.layers.size() + "\n";
+		for (int i = 0; i < b.layers.size(); i++)
+		{
+			Neuron[] neurons = b.layers.get(i).getNeurons();
+			w += neurons.length + "\n";
+			for (int j = 0; j < neurons.length; j++)
+			{
+				Neuron n = neurons[j];
+				w += n.getId() + " " + n.getValue() + " ";
+				for (int k = 0; k < n.getWeights().size(); k++)
+				{
+					w += n.getWeights().get(k).value + " " + n.getWeights().get(k).deltaValue + " ";
+				}
+				w += "\n";
+			}
+
+		}
+		p.write(w);
+		p.close();
+	}
+
+	public static Brain loadNetwork(String fileName) throws FileNotFoundException
+	{
+		File f = new File(fileName);
+		Scanner s = new Scanner(f);
+		boolean bias = false;
+		if (s.nextLine().equals("B"))
+		{
+			bias = true;
+		}
+		double error = Double.parseDouble(s.nextLine());
+		int numLayers = Integer.parseInt(s.nextLine());
+		ArrayList<Layer> layers = new ArrayList<Layer>();
+		if (!bias)
+		{
+			for (int i = 0; i < numLayers; i++)
+			{
+				int numNeurons = Integer.parseInt(s.nextLine());
+				Neuron[] neurons = new Neuron[numNeurons];
+				for (int j = 0; j < numNeurons; j++)
+				{
+						String[] data = s.nextLine().split(" ");
+						Neuron n = new Neuron(Integer.parseInt(data[0]), Double.parseDouble(data[1]), (data.length - 2)/2);
+						double[] wData = dataToWeightData(data);
+						ArrayList<Weight> weights = new ArrayList<Weight>();
+						for (int k = 0; k < wData.length; k += 2)
+						{
+							Weight w = new Weight(wData[k], wData[k + 1]);
+							weights.add(w);
+						}
+						n.setWeights(weights);
+						neurons[j] = n;
+				}
+				Layer l = new Layer(neurons);
+				layers.add(l);
+			}
+		}
+		else
+		{
+			for (int i = 0; i < numLayers; i++)
+			{
+				if (i == numLayers - 1)
+				{
+					int numNeurons = Integer.parseInt(s.nextLine());
+					Neuron[] neurons = new Neuron[numNeurons];
+					for (int j = 0; j < numNeurons; j++)
+					{
+							String[] data = s.nextLine().split(" ");
+							Neuron n = new Neuron(Integer.parseInt(data[0]), Double.parseDouble(data[1]), (data.length - 2)/2);
+							double[] wData = dataToWeightData(data);
+							ArrayList<Weight> weights = new ArrayList<Weight>();
+							for (int k = 0; k < wData.length; k += 2)
+							{
+								Weight w = new Weight(wData[k], wData[k + 1]);
+								weights.add(w);
+							}
+							n.setWeights(weights);
+							neurons[j] = n;
+					}
+					Layer l = new Layer(neurons);
+					layers.add(l);
+				}
+				else
+				{
+					int numNeurons = Integer.parseInt(s.nextLine());
+					Neuron[] neurons = new Neuron[numNeurons];
+					for (int j = 0; j < numNeurons; j++)
+					{
+						if (j < numNeurons - 1)
+						{
+							String[] data = s.nextLine().split(" ");
+							Neuron n = new Neuron(Integer.parseInt(data[0]), Double.parseDouble(data[1]), (data.length - 2)/2);
+							double[] wData = dataToWeightData(data);
+							ArrayList<Weight> weights = new ArrayList<Weight>();
+							for (int k = 0; k < wData.length; k += 2)
+							{
+								Weight w = new Weight(wData[k], wData[k + 1]);
+								weights.add(w);
+							}
+							n.setWeights(weights);
+							neurons[j] = n;
+						}
+						else
+						{
+							String[] data = s.nextLine().split(" ");
+							BiasNeuron n = new BiasNeuron(Integer.parseInt(data[0]), Double.parseDouble(data[1]), (data.length - 2)/2);
+							double[] wData = dataToWeightData(data);
+							ArrayList<Weight> weights = new ArrayList<Weight>();
+							for (int k = 0; k < wData.length; k += 2)
+							{
+								Weight w = new Weight(wData[k], wData[k + 1]);
+								weights.add(w);
+							}
+							n.setWeights(weights);
+							neurons[j] = n;
+						}
+					}
+					Layer l = new Layer(neurons);
+					layers.add(l);
+				}
+			}
+		}
+		s.close();
+		Brain b = new Brain(layers, bias);
+		b.overallError = error;
+		return b;
+	}
+	public static double[] dataToWeightData(String[] data)
+	{
+		double[] w = new double[data.length - 2];
+		for (int i = 0; i < w.length; i++)
+		{
+			w[i] = Double.parseDouble(data[i + 2]);
+		}
+		return w;
+	}
+
+
 }

@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.ArrayList;
 
 import org.opencv.core.Core;
@@ -7,10 +8,11 @@ import org.opencv.core.MatOfDouble;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
-
+//class to test new methods 
 public class TestMain 
 {
 	public static final String SRC = "C:/WebcamTest/dog.jpg";
@@ -22,6 +24,7 @@ public class TestMain
 	public static void main(String[] args)
 	{
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+		/** save images, color conversion
 		Mat m = Imgcodecs.imread(SRC);
 		Mat grayMat = new Mat(m.height(),m.width(), CvType.CV_8UC1);
 		Imgproc.cvtColor(m, grayMat, Imgproc.COLOR_RGB2GRAY);
@@ -37,8 +40,45 @@ public class TestMain
 		Imgcodecs.imwrite(OUTPUT_HSV_BIN, binMatHSV);
 		saveEdges(m, OUTPUT_BIN_EDGE);
 		saveEdges(mHSV, OUTPUT_HSV_BIN_EDGE);
+		*/
+		/**
+		Mat m = Imgcodecs.imread(SRC);
+		Mat HSVMat = getHSV(m);
 		
+		Mat smallMat = new Mat();
+		Imgproc.resize(HSVMat, smallMat, new Size(10, 10));
+		int[] topology = {300, 150, 100, 50, 1};
+		Brain b = new Brain(topology, false);
+		double[] fV = createFeatureVector(smallMat);
+		for (int i = 0; i < fV.length; i++)
+			System.out.println(i + ": " + fV[i]);
+		b.feedForward(fV);
+		double[] output = b.getOutput();
+		
+		for (int i = 0; i < output.length; i++)
+			System.out.println(output[i]);
+		*/
+		File f = new File("C:/WebcamTest/srcobjects/img0.jpg");
+		System.out.println(fixPath(f.getPath()));
 		System.out.println("Done!");
+	}
+	
+	public static double[] createFeatureVector(Mat m)
+	{
+		double[] r = new double[300];
+		int size = 0;
+		for (int i = 0; i < m.rows(); i++)
+		{
+			for (int j = 0; j < m.cols(); j++)
+			{
+				double[] temp = m.get(i, j);
+				r[size] = temp[0];
+				r[size + 1] = temp[1];
+				r[size + 2] = temp[2];
+				size += 3;
+			}
+		}
+		return r;
 	}
 	
 	public static void saveEdges(Mat m, String fileName)
@@ -67,8 +107,8 @@ public class TestMain
 		Mat r = m.clone();
 		Imgproc.cvtColor(r, r, Imgproc.COLOR_RGB2HSV_FULL);
 		return r;
-		
 	}
+	
 	 public static Mat autoCanny(Mat image)
 	 {
 		 MatOfDouble mu = new MatOfDouble();
@@ -87,5 +127,20 @@ public class TestMain
 		 Imgproc.Canny(image, r, lower, upper, 3, false);
 		 return r;
 	 }
+	 
+	 public static String fixPath(String oldPath)
+		{
+			String r = "";
+			String[] parts = oldPath.split("\\");
+			for (int i = 0; i < parts.length; i++)
+			{
+				if (i < parts.length - 1)
+					r += parts[i] + "/";
+				else
+					r += parts[i];
+			}
+			return r;
+			
+		}
 	
 }

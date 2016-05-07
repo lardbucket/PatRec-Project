@@ -18,6 +18,7 @@ import org.opencv.core.Scalar;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
+
 public class MyFrame extends JFrame implements KeyListener
 {
 	/**
@@ -78,9 +79,6 @@ public class MyFrame extends JFrame implements KeyListener
 		setContentPane(contentPane);
 		addKeyListener(this);
 		//contentPane.setLayout(null);
-		
-		
-		
 		
 		new MyThread().start();
 	}
@@ -230,10 +228,6 @@ public class MyFrame extends JFrame implements KeyListener
 			// TODO Auto-generated method stub
 
 		}
-		
-		
-	
-	
 	
 	class MyThread extends Thread{
 		@Override

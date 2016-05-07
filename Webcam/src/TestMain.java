@@ -59,7 +59,7 @@ public class TestMain
 			System.out.println(output[i]);
 		*/
 		File f = new File("C:/WebcamTest/srcobjects/img0.jpg");
-		System.out.println(fixPath(f.getPath()));
+		System.out.println((f.getPath()));
 		System.out.println("Done!");
 	}
 	
@@ -128,19 +128,6 @@ public class TestMain
 		 return r;
 	 }
 	 
-	 public static String fixPath(String oldPath)
-		{
-			String r = "";
-			String[] parts = oldPath.split("\\");
-			for (int i = 0; i < parts.length; i++)
-			{
-				if (i < parts.length - 1)
-					r += parts[i] + "/";
-				else
-					r += parts[i];
-			}
-			return r;
-			
-		}
+
 	
 }

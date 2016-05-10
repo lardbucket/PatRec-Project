@@ -80,7 +80,7 @@ public class MyFrame extends JFrame implements KeyListener
 		setContentPane(contentPane);
 		addKeyListener(this);
 		//contentPane.setLayout(null);
-
+		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		new MyThread().start();
 	}
 

@@ -24,7 +24,7 @@ public class TestMain
 	public static final String OUTPUT_HSV_BIN = "C:/WebcamTest/dogHSVBIN.jpg";
 	public static final String OUTPUT_HSV_BIN_EDGE = "C:/WebcamTest/dogHSVBINedge.jpg";
 	public static final String OUTPUT_BIN_EDGE = "C:/WebcamTest/dogBINedge.jpg";
-	public static void main(String[] args) throws FileNotFoundException
+	public static void main(String[] args) 
 	{
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		/** save images, color conversion
@@ -61,26 +61,30 @@ public class TestMain
 		for (int i = 0; i < output.length; i++)
 			System.out.println(output[i]);
 		 */
-		int[] topology = {300, 300, 150, 100, 50, 25, 10, 5, 1};
-		Brain b = new Brain(topology, false);
+		int[] topology = {300, 100, 50, 25, 10, 5, 3};
+		Brain b = new Brain(topology, true);
 		trainBrain(b);
-		Mat test = Imgcodecs.imread("C:/WebcamTest/outobjects/0.jpg");
-		double[] input = createFeatureVector(test);
-		b.feedForward(input);
-		System.out.println(b.getOutput()[0]);
+		for (int i = 0; i < 5; i++)
+		{
+			Mat test = Imgcodecs.imread("C:/WebcamTest/outobjects/" + i + ".jpg");
+			double[] input = createFeatureVector(test);
+			b.feedForward(input);
+			System.out.println(b.getOutput()[0] + " " + b.getOutput()[1] + " " + b.getOutput()[2]);
+		}
 		System.out.println("Done!");
 	}
-	public static void trainBrain(Brain b) throws FileNotFoundException
+	public static void trainBrain(Brain b) 
 	{
 		String obj_dir = CreateTrainingSet.OUT_OBJECTS_FOLDER;
 		String non_obj_dir = CreateTrainingSet.OUT_NON_OBJECTS_FOLDER;
-		String backup_dir = "C:/WebcamTest/brain.sav";
+		//String backup_dir = "C:/WebcamTest/brain.sav";
 		File[] objects = new File(obj_dir).listFiles();
 		File[] nonObjects = new File(non_obj_dir).listFiles();
-		double[] object_target = {1};
-		double[] non_object_target = {-1};
+		double[] object_target = {1, 1 , 1};
+		double[] non_object_target = {-1, -1, -1};
 		double errorThreshold = 0.3;
 		int epoch = 1;
+		Brain prevBrain = null;
 		//double averageError = 0;
 		double prevError = 0;
 		do 
@@ -88,19 +92,21 @@ public class TestMain
 			double currentError = 0;
 			for (int i = 0; i < objects.length; i++)
 			{
+				currentError += b.overallError;
 				Mat m = Imgcodecs.imread(objects[i].getPath());
 				double[] inputs = createFeatureVector(m);
 				b.feedForward(inputs);
 				b.backPropagate(object_target);
-				currentError += b.overallError;
+				
 			}
 			for (int i = 0; i < objects.length; i++)
 			{
+				currentError += b.overallError;
 				Mat m = Imgcodecs.imread(nonObjects[i].getPath());
 				double[] inputs = createFeatureVector(m);
 				b.feedForward(inputs);
 				b.backPropagate(non_object_target);
-				currentError += b.overallError;
+				
 			}
 			currentError /= (objects.length + objects.length);
 			System.out.println("Epoch " + epoch + ": " + currentError);
@@ -108,17 +114,20 @@ public class TestMain
 			
 			if (epoch == 1)
 			{
-				saveNetwork(b, backup_dir);
+				prevBrain = b;
+				prevError = currentError;
 			}
 			else if (currentError > prevError)
 			{
-				b = loadNetwork(backup_dir);
+				b = prevBrain;
 			}
 			else
 			{
-				saveNetwork(b, backup_dir);
+				//saveNetwork(b, backup_dir);
+				prevBrain = b;
+				prevError = currentError;
 			}
-			prevError = currentError;
+			
 			epoch++;
 		}
 		while (prevError > errorThreshold);
@@ -126,6 +135,9 @@ public class TestMain
 	}
 	public static double[] createFeatureVector(Mat m)
 	{
+		double hMax = 180;
+		double sMax = 255;
+		double vMax = 255;
 		double[] r = new double[300];
 		int size = 0;
 		for (int i = 0; i < m.rows(); i++)
@@ -133,9 +145,9 @@ public class TestMain
 			for (int j = 0; j < m.cols(); j++)
 			{
 				double[] temp = m.get(i, j);
-				r[size] = temp[0];
-				r[size + 1] = temp[1];
-				r[size + 2] = temp[2];
+				r[size] = temp[0] / hMax;
+				r[size + 1] = temp[1] /sMax;
+				r[size + 2] = temp[2] /vMax;
 				size += 3;
 			}
 		}

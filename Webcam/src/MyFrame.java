@@ -16,6 +16,7 @@ import org.opencv.core.MatOfDouble;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
@@ -27,10 +28,11 @@ public class MyFrame extends JFrame implements KeyListener
 	 */
 	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
-	private int state = 0;
-	int[] topology = {300, 150, 75, 25, 1};
+	//private int state = 0;
+	int[] topology = {300, 150, 75, 100, 50, 25, 10, 5, 1};
 	private Brain b = new Brain(topology, false);
-
+	Scalar red = new Scalar(0, 0, 255);
+	Scalar blue = new Scalar(255, 0, 0);
 	/**
 	 * states:
 	 * 0 = normal (a)
@@ -81,6 +83,7 @@ public class MyFrame extends JFrame implements KeyListener
 		addKeyListener(this);
 		//contentPane.setLayout(null);
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+		trainBrain(b);
 		new MyThread().start();
 	}
 
@@ -88,8 +91,8 @@ public class MyFrame extends JFrame implements KeyListener
 
 	public void paint(Graphics g)
 	{
-		if (state == 0)
-		{
+	//	if (state == 0)
+		//{
 			this.setTitle("Object Detection: Normal");
 			g = contentPane.getGraphics();
 			BufferedImage src = videoCap.getOneFrame();
@@ -115,12 +118,17 @@ public class MyFrame extends JFrame implements KeyListener
 				Rect r = Imgproc.boundingRect(m);
 				if (r.area() > 100)
 				{
-					roi.add(new Mat(mat, r));
-					Imgproc.rectangle(display, r.tl(), r.br(), new Scalar(0, 0, 255));
+					Mat newROI = new Mat(mat, r);
+					roi.add(newROI);
+					if (isObject(newROI))
+						Imgproc.rectangle(display, r.tl(), r.br(), blue);
+					else
+						Imgproc.rectangle(display, r.tl(), r.br(), red);
 				}
 			}
 			g.drawImage(colorMatToImage(display), 0, 0, this);
 		}
+		/**
 		else if (state == 1)
 		{
 			this.setTitle("Object Detection: Binary");
@@ -148,15 +156,21 @@ public class MyFrame extends JFrame implements KeyListener
 				Rect r = Imgproc.boundingRect(m);
 				if (r.area() > 100)
 				{
-					roi.add(new Mat(mat, r));
-					Imgproc.rectangle(display, r.tl(), r.br(), new Scalar(0, 0, 255));
+					Mat newROI = new Mat(mat, r);
+					
+					roi.add(newROI);
+					if (isObject(newROI))
+						Imgproc.rectangle(display, r.tl(), r.br(), red);
+					else
+						Imgproc.rectangle(display, r.tl(), r.br(), red);
 				}
 			}
 			g.drawImage(binMatToImage(display), 0, 0, this);
 
 		}
+		*/
 		//edit here
-	}
+	//}
 
 	public static BufferedImage grayMatToImage(Mat m)
 	{
@@ -208,27 +222,80 @@ public class MyFrame extends JFrame implements KeyListener
 		File[] objects = new File(obj_dir).listFiles();
 		File[] nonObjects = new File(non_obj_dir).listFiles();
 		double[] object_target = {1};
-		double[] non_object_target = {0};
-		for (int i = 0; i < objects.length; i++)
+		double[] non_object_target = {-1};
+		double errorThreshold = 1.01;
+		int epoch = 1;
+		Brain prevBrain = null;
+		//double averageError = 0;
+		double prevError = 0;
+		do 
 		{
-			Mat m = Imgcodecs.imread(objects[i].getPath());
-			double[] inputs = createFeatureVector(m);
-			b.feedForward(inputs);
-			b.backPropagate(object_target);
+			double currentError = 0;
+			for (int i = 0; i < objects.length; i++)
+			{
+				
+				Mat m = Imgcodecs.imread(objects[i].getPath());
+				double[] inputs = createFeatureVector(m);
+				b.feedForward(inputs);
+				b.backPropagate(object_target);
+				currentError += b.overallError;
+				//m = Imgcodecs.imread(nonObjects[i].getPath());
+				//inputs = createFeatureVector(m);
+				//b.feedForward(inputs);
+				//b.backPropagate(non_object_target);
+				//currentError += b.overallError;
+			}
+			
+			for (int i = 0; i < objects.length; i++)
+			{
+				currentError += b.overallError;
+				Mat m = Imgcodecs.imread(nonObjects[i].getPath());
+				double[] inputs = createFeatureVector(m);
+				b.feedForward(inputs);
+				b.backPropagate(non_object_target);
+				
+			}
+			currentError /= (objects.length + objects.length);
+			System.out.println("Epoch " + epoch + ": " + currentError);
+			
+			
+			if (epoch == 1)
+			{
+				prevBrain = b;
+				prevError = currentError;
+			}
+			else if (currentError > prevError)
+			{
+				b = prevBrain;
+			}
+			else
+			{
+				//saveNetwork(b, backup_dir);
+				prevBrain = b;
+				prevError = currentError;
+			}
+			
+			epoch++;
 		}
-		for (int i = 0; i < nonObjects.length; i++)
-		{
-			Mat m = Imgcodecs.imread(nonObjects[i].getPath());
-			double[] inputs = createFeatureVector(m);
-			b.feedForward(inputs);
-			b.backPropagate(non_object_target);
-		}
-
+		while (prevError > errorThreshold);
 	}
 
-
-	public static double[] createFeatureVector(Mat m)
+	public static Mat getHSV(Mat m)
 	{
+		Mat r = m.clone();
+		Imgproc.cvtColor(r, r, Imgproc.COLOR_RGB2HSV_FULL);
+		return r;
+	}
+	
+	public static double[] createFeatureVector(Mat mat)
+	{
+		Mat m = mat.clone();
+		m = getHSV(m);
+		if (m.cols() != 10 || m.rows() != 10)
+		{
+			Imgproc.resize(m, m, new Size(10, 10));
+		}
+		//System.out.println(m.dump());
 		double[] r = new double[300];
 		int size = 0;
 		for (int i = 0; i < m.rows(); i++)
@@ -244,20 +311,31 @@ public class MyFrame extends JFrame implements KeyListener
 		}
 		return r;
 	}
-
-	@Override
+	
+	public boolean isObject(Mat m)
+	{
+		double[] inputs = createFeatureVector(m);
+		b.feedForward(inputs);
+		double[] output = b.getOutput();
+		if (output[0] > 0)
+			return true;
+		else
+			return false;
+	}
+	
+	@Override	
 	public void keyPressed(KeyEvent e) 
 	{
 		int k = e.getKeyCode();
 		if (k == KeyEvent.VK_RIGHT) 
 		{
 
-			if (state < 4)
-				state++;
+			//if (state < 4)
+			//	state++;
 		}
 		else if (k == KeyEvent.VK_LEFT){
-			if (state > 0)
-				state--;
+			//if (state > 0)
+			//	state--;
 		}
 	}
 

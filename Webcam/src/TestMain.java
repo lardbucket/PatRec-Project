@@ -61,98 +61,21 @@ public class TestMain
 		for (int i = 0; i < output.length; i++)
 			System.out.println(output[i]);
 		 */
-		int[] topology = {300, 100, 50, 25, 10, 5, 3};
+		int[] topology = {300, 150, 75, 50, 25, 10, 5, 1};
 		Brain b = new Brain(topology, true);
-		trainBrain(b);
-		for (int i = 0; i < 5; i++)
+		BrainMethods.trainBrain(b, 50, 0.1);
+		File[] f = new File("nonobjects/").listFiles();
+		for (int i = 0; i < f.length; i++)
 		{
-			Mat test = Imgcodecs.imread("C:/WebcamTest/outobjects/" + i + ".jpg");
-			double[] input = createFeatureVector(test);
+			Mat test = Imgcodecs.imread(f[i].getPath());
+			double[] input = BrainMethods.createFeatureVector(test);
 			b.feedForward(input);
-			System.out.println(b.getOutput()[0] + " " + b.getOutput()[1] + " " + b.getOutput()[2]);
+			System.out.println(b.getOutput()[0]);
 		}
 		System.out.println("Done!");
 	}
-	public static void trainBrain(Brain b) 
-	{
-		String obj_dir = CreateTrainingSet.OUT_OBJECTS_FOLDER;
-		String non_obj_dir = CreateTrainingSet.OUT_NON_OBJECTS_FOLDER;
-		//String backup_dir = "C:/WebcamTest/brain.sav";
-		File[] objects = new File(obj_dir).listFiles();
-		File[] nonObjects = new File(non_obj_dir).listFiles();
-		double[] object_target = {1, 1 , 1};
-		double[] non_object_target = {-1, -1, -1};
-		double errorThreshold = 0.3;
-		int epoch = 1;
-		Brain prevBrain = null;
-		//double averageError = 0;
-		double prevError = 0;
-		do 
-		{
-			double currentError = 0;
-			for (int i = 0; i < objects.length; i++)
-			{
-				currentError += b.overallError;
-				Mat m = Imgcodecs.imread(objects[i].getPath());
-				double[] inputs = createFeatureVector(m);
-				b.feedForward(inputs);
-				b.backPropagate(object_target);
-				
-			}
-			for (int i = 0; i < objects.length; i++)
-			{
-				currentError += b.overallError;
-				Mat m = Imgcodecs.imread(nonObjects[i].getPath());
-				double[] inputs = createFeatureVector(m);
-				b.feedForward(inputs);
-				b.backPropagate(non_object_target);
-				
-			}
-			currentError /= (objects.length + objects.length);
-			System.out.println("Epoch " + epoch + ": " + currentError);
-			
-			
-			if (epoch == 1)
-			{
-				prevBrain = b;
-				prevError = currentError;
-			}
-			else if (currentError > prevError)
-			{
-				b = prevBrain;
-			}
-			else
-			{
-				//saveNetwork(b, backup_dir);
-				prevBrain = b;
-				prevError = currentError;
-			}
-			
-			epoch++;
-		}
-		while (prevError > errorThreshold);
+	
 
-	}
-	public static double[] createFeatureVector(Mat m)
-	{
-		double hMax = 180;
-		double sMax = 255;
-		double vMax = 255;
-		double[] r = new double[300];
-		int size = 0;
-		for (int i = 0; i < m.rows(); i++)
-		{
-			for (int j = 0; j < m.cols(); j++)
-			{
-				double[] temp = m.get(i, j);
-				r[size] = temp[0] / hMax;
-				r[size + 1] = temp[1] /sMax;
-				r[size + 2] = temp[2] /vMax;
-				size += 3;
-			}
-		}
-		return r;
-	}
 
 	public static void saveEdges(Mat m, String fileName)
 	{

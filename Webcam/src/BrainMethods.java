@@ -9,18 +9,64 @@ public class BrainMethods //contains the trainBrain, getHSV, createFeatureVector
 {
 	static final double[] object_target = {1};
 	static final double[] non_object_target = {-1};
-	public static void trainBrain(Brain b)
+	public static void trainBrain(Brain b, int maxEpochs, double errorThreshold)
 	{
-		String obj_dir = CreateTrainingSet.OUT_OBJECTS_FOLDER;
-		String non_obj_dir = CreateTrainingSet.OUT_NON_OBJECTS_FOLDER;
+		String obj_dir = "objects/";//"C:/WebcamTest/newObj/";//CreateTrainingSet.OUT_OBJECTS_FOLDER;
+		String non_obj_dir = "nonobjects/";//"C:/WebcamTest/newNonObj/";//CreateTrainingSet.OUT_NON_OBJECTS_FOLDER;
 		File[] objects = new File(obj_dir).listFiles();
 		File[] nonObjects = new File(non_obj_dir).listFiles();
 		
-		double errorThreshold = 0.25;
 		int epoch = 1;
 		Brain prevBrain = null;
 		//double averageError = 0;
-		double prevError = 0;
+		double prevError = 10000;
+		double currentError = 10000;
+		while (currentError > errorThreshold && epoch < maxEpochs)
+		{
+			if (epoch % 2 == 0)
+			{
+				for (int i = 0; i < objects.length; i++)
+				{
+					Mat m = Imgcodecs.imread(objects[i].getPath());
+					double[] inputs = createFeatureVector(m);
+					b.feedForward(inputs);
+					b.backPropagate(object_target);
+					currentError += b.overallError;
+				}
+				for (int i = 0; i < objects.length; i++)
+				{
+					Mat m = Imgcodecs.imread(nonObjects[i].getPath());
+					double[] inputs = createFeatureVector(m);
+					b.feedForward(inputs);
+					b.backPropagate(non_object_target);
+					currentError += b.overallError;
+				}
+			}
+			else
+			{
+				for (int i = 0; i < objects.length; i++)
+				{
+					Mat m = Imgcodecs.imread(nonObjects[i].getPath());
+					double[] inputs = createFeatureVector(m);
+					b.feedForward(inputs);
+					b.backPropagate(non_object_target);
+					currentError += b.overallError;
+				}
+				for (int i = 0; i < objects.length; i++)
+				{
+					Mat m = Imgcodecs.imread(objects[i].getPath());
+					double[] inputs = createFeatureVector(m);
+					b.feedForward(inputs);
+					b.backPropagate(object_target);
+					currentError += b.overallError;
+				}
+			}
+			currentError /= (objects.length * 2);
+			System.out.println("Epoch " + epoch + ": " + currentError);
+			epoch++;
+		}
+		System.out.println("OK!");
+		/**
 		do 
 		{
 			double currentError = 0;
@@ -32,13 +78,15 @@ public class BrainMethods //contains the trainBrain, getHSV, createFeatureVector
 				b.feedForward(inputs);
 				b.backPropagate(object_target);
 				currentError += b.overallError;
-				//m = Imgcodecs.imread(nonObjects[i].getPath());
-				//inputs = createFeatureVector(m);
-				//b.feedForward(inputs);
-				//b.backPropagate(non_object_target);
-				//currentError += b.overallError;
+				/**
+				m = Imgcodecs.imread(nonObjects[i].getPath());
+				inputs = createFeatureVector(m);
+				b.feedForward(inputs);
+				b.backPropagate(non_object_target);
+				currentError += b.overallError;
+				
 			}
-			
+			/**
 			for (int i = 0; i < objects.length; i++)
 			{
 				currentError += b.overallError;
@@ -63,14 +111,14 @@ public class BrainMethods //contains the trainBrain, getHSV, createFeatureVector
 			}
 			else
 			{
-				//saveNetwork(b, backup_dir);
 				prevBrain = b;
 				prevError = currentError;
 			}
 			
 			epoch++;
 		}
-		while (prevError > errorThreshold);
+		while (prevError > errorThreshold && epoch < maxEpochs);
+		*/
 	}
 	
 	public static double[] createFeatureVector(Mat mat)
@@ -84,7 +132,6 @@ public class BrainMethods //contains the trainBrain, getHSV, createFeatureVector
 		{
 			Imgproc.resize(m, m, new Size(10, 10));
 		}
-		//System.out.println(m.dump());
 		double[] r = new double[300];
 		int size = 0;
 		for (int i = 0; i < m.rows(); i++)
@@ -104,8 +151,8 @@ public class BrainMethods //contains the trainBrain, getHSV, createFeatureVector
 
 	public static Mat getHSV(Mat m)
 	{
-		Mat r = m.clone();
-		Imgproc.cvtColor(r, r, Imgproc.COLOR_RGB2HSV);
+		Mat r = new Mat();
+		Imgproc.cvtColor(m, r, Imgproc.COLOR_RGB2HSV);
 		return r;
 	}
 	

@@ -27,7 +27,7 @@ public class MyFrame extends JFrame implements KeyListener
 	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
 	//private int state = 0;
-	int[] topology = {300, 150, 75, 100, 50, 25, 10, 5, 1};
+	int[] topology = {300, 150, 100, 75, 50, 25, 10, 5, 1};
 	private Brain b = new Brain(topology, false);
 	Scalar red = new Scalar(0, 0, 255);
 	Scalar blue = new Scalar(255, 0, 0);
@@ -44,7 +44,8 @@ public class MyFrame extends JFrame implements KeyListener
 				{
 					MyFrame frame = new MyFrame();
 					frame.setVisible(true);
-				} catch (Exception e)
+				} 
+				catch (Exception e)
 				{
 					e.printStackTrace();
 				}
@@ -68,7 +69,7 @@ public class MyFrame extends JFrame implements KeyListener
 		setContentPane(contentPane);
 		addKeyListener(this);
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-		BrainMethods.trainBrain(b);
+		BrainMethods.trainBrain(b, 20, 0.3);
 		new MyThread().start();
 	}
 

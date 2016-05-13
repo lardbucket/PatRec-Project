@@ -40,7 +40,7 @@ public class CreateTrainingSet
 	public static Mat getHSV(Mat m)
 	{
 		Mat r = m.clone();
-		Imgproc.cvtColor(r, r, Imgproc.COLOR_RGB2HSV_FULL);
+		Imgproc.cvtColor(r, r, Imgproc.COLOR_RGB2HSV);
 		return r;
 	}
 	
